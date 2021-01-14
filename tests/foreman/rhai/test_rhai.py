@@ -18,6 +18,7 @@ import pytest
 from airgun.entities.rhai.base import InsightsOrganizationPageError
 from fauxfactory import gen_string
 from nailgun import entities
+from wait_for import wait_for
 
 from robottelo import manifests
 from robottelo.api.utils import upload_manifest as up_man
@@ -27,51 +28,54 @@ from robottelo.constants import DISTRO_RHEL7
 from robottelo.vm import VirtualMachine
 
 
-pytestmark = pytest.mark.usefixtures("attach_subscription")
+pytestmark = pytest.mark.usefixtures('attach_subscription')
 
 NAV_ITEMS = [
-    ("insightsaction", "Details"),
-    ("insightsinventory", "All"),
-    ("insightsoverview", "Details"),
-    ("insightsplan", "All"),
-    ("insightsrule", "All"),
+    ('insightsaction', 'Details'),
+    ('insightsinventory', 'All'),
+    ('insightsoverview', 'Details'),
+    ('insightsplan', 'All'),
+    ('insightsrule', 'All'),
 ]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def module_org():
-    org = entities.Organization(name="insights_{}".format(gen_string("alpha", 6))).create()
+    org = entities.Organization(name='insights_{}'.format(gen_string('alpha', 6))).create()
     with manifests.clone() as manifest:
         up_man(org.id, manifest.content)
     yield org
     org.delete()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def activation_key(module_org):
     ak = entities.ActivationKey(
         auto_attach=True,
         content_view=module_org.default_content_view.id,
         environment=module_org.library.id,
-        name=gen_string("alpha"),
+        name=gen_string('alpha'),
         organization=module_org,
     ).create()
     yield ak
     ak.delete()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def attach_subscription(module_org, activation_key):
     for subs in entities.Subscription(organization=module_org).search():
         if subs.name == DEFAULT_SUBSCRIPTION_NAME:
-            # "quantity" must be 1, not subscription["quantity"]. Greater
-            # values produce this error: "RuntimeError: Error: Only pools
+            # 'quantity' must be 1, not subscription['quantity']. Greater
+            # values produce this error: 'RuntimeError: Error: Only pools
             # with multi-entitlement product subscriptions can be added to
-            # the activation key with a quantity greater than one."
-            activation_key.add_subscriptions(data={"quantity": 1, "subscription_id": subs.id})
+            # the activation key with a quantity greater than one.'
+            activation_key.add_subscriptions(data={'quantity': 1, 'subscription_id': subs.id})
             break
     else:
-        raise Exception(f"{module_org.name} organization doesn't have any subscription")
+        raise Exception(
+            f'Could not find subscription {DEFAULT_SUBSCRIPTION_NAME!r} in organization'
+            f' {module_org.name}'
+        )
 
 
 @pytest.fixture
@@ -92,9 +96,9 @@ def test_positive_register_client_to_rhai(vm, autosession):
         menu of Red Hat Access Insights
     """
     table = autosession.insightsinventory.search(vm.hostname)
-    assert table[0]["System Name"].text == vm.hostname
+    assert table[0]['System Name'].text == vm.hostname
     result = autosession.insightsinventory.total_systems
-    assert result == "1", "Registered clients are not listed"
+    assert result == '1', 'Registered insights client not listed'
 
 
 def test_positive_unregister_client_to_rhai(vm, autosession):
@@ -105,14 +109,17 @@ def test_positive_unregister_client_to_rhai(vm, autosession):
     :expectedresults: Unregistered client should not appear in the Systems sub-
         menu of Red Hat Access Insights
     """
-    vm.unregister()
-    table = autosession.insightsinventory.search(vm.hostname)
-    assert not table[0].is_displayed
+    vm.run('insights-client --unregister')
+    wait_for(
+        lambda: autosession.insightsinventory.search(vm.hostname).row_count == 0,
+        timeout=300,
+        delay=30,
+    )
     result = autosession.insightsinventory.total_systems
-    assert result == "0", "The client is still registered"
+    assert result == '0', 'The insights client is still registered'
 
 
-@pytest.mark.parametrize("nav_item", NAV_ITEMS, ids=lambda nav_item: nav_item[0])
+@pytest.mark.parametrize('nav_item', NAV_ITEMS, ids=lambda nav_item: nav_item[0])
 def test_rhai_navigation(autosession, nav_item):
     """Test navigation across RHAI tab
 
@@ -139,9 +146,8 @@ def test_negative_org_not_selected(autosession):
         without selecting an org
     """
     autosession.organization.select(org_name=ANY_CONTEXT['org'])
-    with pytest.raises(InsightsOrganizationPageError) as context:
+    with pytest.raises(InsightsOrganizationPageError, match='Organization Selection Required'):
         autosession.insightsoverview.read()
-    assert "Organization Selection Required" in str(context.value)
 
 
 @pytest.mark.stubbed
@@ -466,7 +472,7 @@ def test_numeric_group(vm, autosession):
     # as groupadd with numeric value should fail, add a valid group and replace it with a numeric
     # one in the group file.
     vm.run('groupadd test_group')
-    vm.run("sed -i 's/test_group/123456/' /etc/group")
+    vm.run('sed -i s/test_group/123456/ /etc/group')
     vm.run('insights-client')
     values = autosession.insightsinventory.read(vm.hostname, 'rules')
     # assert that the user and group numeric rule is present
