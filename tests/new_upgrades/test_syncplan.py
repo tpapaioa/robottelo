@@ -67,7 +67,7 @@ def sync_plan_migration_setup(sync_plan_upgrade_shared_satellite, upgrade_action
             }
         )
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

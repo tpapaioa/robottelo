@@ -87,7 +87,7 @@ def custom_repo_check_setup(sat_upgrade_chost, content_upgrade_shared_satellite,
         result = sat_upgrade_chost.execute(f'yum install -y {FAKE_0_CUSTOM_PACKAGE_NAME}')
         assert result.status == 0
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 
@@ -165,7 +165,6 @@ def container_repo_sync_setup(content_upgrade_shared_satellite, upgrade_action):
             assert repo.content_counts['docker_manifest'] > 0
             test_data.repos.append(repo.id)
         sat_upgrade.ready()
-        target_sat._session = None
         yield test_data
 
 

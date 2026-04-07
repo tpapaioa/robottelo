@@ -90,7 +90,7 @@ def user_group_with_ldap_user_setup(ad_data, usergroup_upgrade_shared_satellite,
             query={'search': f'name={user_group["name"]}'}
         )[0]
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

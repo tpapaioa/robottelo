@@ -108,6 +108,7 @@ def provisioning_templates_setup(
             assert host.read_template(data={'template_kind': kind})
 
         sat_upgrade.ready()
+        target_sat.close()
         test_data = Box(
             {
                 'provision_host_name': host.name,
@@ -115,8 +116,6 @@ def provisioning_templates_setup(
                 'target_sat': target_sat,
             }
         )
-        target_sat._swap_nailgun(settings.upgrade.to_version)
-        target_sat._session = None
         yield test_data
 
 

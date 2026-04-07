@@ -73,8 +73,7 @@ def ak_upgrade_setup(content_upgrade_shared_satellite, upgrade_action):
         ak = ak.update(['host_collection'])
         assert len(ak.host_collection) == 1
         sat_upgrade.ready()
-        target_sat._swap_nailgun(settings.upgrade.to_version)
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

@@ -104,7 +104,7 @@ def iop_recommendations_upgrade_setup(
             }
         )
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

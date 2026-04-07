@@ -66,7 +66,7 @@ def disabled_bookmark_setup(search_upgrade_shared_satellite, upgrade_action):
             assert bm.query == f"name={bookmark_name}"
             assert not bm.public
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 
@@ -143,7 +143,6 @@ def enabled_bookmark_setup(search_upgrade_shared_satellite, upgrade_action):
             assert bm.query == f"name={bookmark_name}"
             assert bm.public
         sat_upgrade.ready()
-        target_sat._session = None
         yield test_data
 
 

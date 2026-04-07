@@ -56,7 +56,7 @@ def perf_tuning_upgrade_setup(perf_tuning_upgrade_shared_satellite, upgrade_acti
             assert 'default: "default"' in command_output.stdout
             raise
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield target_sat
 
 

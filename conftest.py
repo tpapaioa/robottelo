@@ -7,6 +7,7 @@ pytest_plugins = [
     'pytest_plugins.auto_vault',
     'pytest_plugins.disable_rp_params',
     'pytest_plugins.external_logging',
+    'pytest_plugins.feature_matrix',
     'pytest_plugins.fixture_markers',
     'pytest_plugins.infra_dependent_markers',
     'pytest_plugins.issue_handlers',

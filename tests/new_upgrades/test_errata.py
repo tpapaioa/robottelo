@@ -195,8 +195,7 @@ def generate_errata_for_client_setup(
         errata_ids = [errata.errata_id for errata in erratum_list]
         assert sorted(errata_ids) == sorted(settings.repos.yum_9.errata)
         sat_upgrade.ready()
-        target_sat._swap_nailgun(settings.upgrade.to_version)
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

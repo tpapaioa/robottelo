@@ -19,6 +19,8 @@ from tests.foreman.ui.test_rhcloud_insights import (
     create_insights_vulnerability as create_insights_recommendation,
 )
 
+pytestmark = [pytest.mark.requires_feature(feature_name='iop.advisor')]
+
 
 @pytest.mark.no_containers
 @pytest.mark.rhel_ver_list([settings.content_host.default_rhel_version])

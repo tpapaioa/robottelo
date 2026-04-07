@@ -91,7 +91,7 @@ def hostgroup_upgrade_setup(hostgroup_upgrade_shared_satellite, upgrade_action):
         ).create()
         assert host_group.name == f"{test_name}_host_grp"
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

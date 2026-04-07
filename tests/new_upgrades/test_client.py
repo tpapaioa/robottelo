@@ -114,6 +114,7 @@ def pre_client_package_installation_setup(
         test_data.product = product
         test_data.ak = ak
         sat_upgrade.ready()
+        target_sat.close()
         yield test_data
 
 
@@ -169,7 +170,6 @@ def test_post_scenario_post_client_package_installation(pre_client_package_insta
     rhel_client.execute('subscription-manager unregister')
     rhel_client.execute('subscription-manager clean')
     target_sat = pre_client_package_installation_setup.satellite
-    target_sat._swap_nailgun(settings.upgrade.to_version)
     org = target_sat.api.Organization(id=pre_client_package_installation_setup.org.id).read()
     location = target_sat.api.Location(id=pre_client_package_installation_setup.location.id).read()
     lce = target_sat.api.LifecycleEnvironment(

@@ -25,10 +25,10 @@ from robottelo.constants import DEFAULT_LOC, OPENSSH_RECOMMENDATION
 from robottelo.enums import NetworkType
 from robottelo.utils.datafactory import gen_string
 from robottelo.utils.io import get_report_data
-from tests.foreman.ui.test_rhcloud_insights import (
-    create_insights_vulnerability as create_insights_recommendation,
-)
+from tests.foreman.ui.test_rhcloud_insights import create_recommendation
 from tests.foreman.ui.test_rhcloud_inventory import common_assertion
+
+pytestmark = [pytest.mark.requires_feature(feature_name='iop.advisor')]
 
 
 def create_rbac_user(
@@ -127,15 +127,15 @@ def test_iop_recommendations_e2e(
     org_name = rhcloud_manifest_org.name
 
     # Prepare misconfigured machine and upload data to Insights
-    create_insights_recommendation(rhel_insights_vm)
+    create_recommendation(rhel_insights_vm)
+
+    # Verify that we can see the rule hit via insights-client
+    result = rhel_insights_vm.execute('insights-client --diagnosis')
+    assert result.status == 0
+    assert 'OPENSSH_HARDENING_CONFIG_PERMS' in result.stdout
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
-
-        # Verify that we can see the rule hit via insights-client
-        result = rhel_insights_vm.execute('insights-client --diagnosis')
-        assert result.status == 0
-        assert 'OPENSSH_HARDENING_CONFIG_PERMS' in result.stdout
 
         # Search for the recommendation.
         result = session.recommendationstab.search(OPENSSH_RECOMMENDATION)
@@ -312,7 +312,7 @@ def test_iop_recommendations_remediate_multiple_hosts(
 
     # Prepare misconfigured machines and upload data to Insights
     for vm in rhel_insights_vms:
-        create_insights_recommendation(vm)
+        create_recommendation(vm)
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
@@ -384,15 +384,15 @@ def test_iop_recommendations_host_details_e2e(
     org_name = rhcloud_manifest_org.name
 
     # Prepare misconfigured machine and upload data to Insights
-    create_insights_recommendation(rhel_insights_vm)
+    create_recommendation(rhel_insights_vm)
+
+    # Verify that we can see the rule hit via insights-client
+    result = rhel_insights_vm.execute('insights-client --diagnosis')
+    assert result.status == 0
+    assert 'OPENSSH_HARDENING_CONFIG_PERMS' in result.stdout
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
-
-        # Verify that we can see the rule hit via insights-client
-        result = rhel_insights_vm.execute('insights-client --diagnosis')
-        assert result.status == 0
-        assert 'OPENSSH_HARDENING_CONFIG_PERMS' in result.stdout
 
         result = session.host_new.get_recommendations(rhel_insights_vm.hostname)
         assert any(row.get('Description') == OPENSSH_RECOMMENDATION for row in result), (
@@ -476,7 +476,7 @@ def test_iop_recommendations_remediation_type_and_status(
     assert rhel_insights_vm.execute('insights-client --version').status == 0
 
     # Prepare misconfigured machine and upload data to Insights
-    create_insights_recommendation(rhel_insights_vm)
+    create_recommendation(rhel_insights_vm)
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
@@ -561,7 +561,7 @@ def test_iop_insights_rbac_view_only_permissions(
     )
 
     # Prepare misconfigured machine and upload data to Insights
-    create_insights_recommendation(rhel_insights_vm)
+    create_recommendation(rhel_insights_vm)
 
     # Log in as the view-only user
     with module_target_sat_insights.ui_session(test_name, user.login, user_password) as session:
@@ -639,7 +639,7 @@ def test_iop_insights_rbac_edit_permissions(
     )
 
     # Prepare misconfigured machine and upload data to Insights
-    create_insights_recommendation(rhel_insights_vm)
+    create_recommendation(rhel_insights_vm)
 
     # Log in as the user with edit permissions
     with module_target_sat_insights.ui_session(test_name, user.login, user_password) as session:
@@ -713,7 +713,7 @@ def test_iop_insights_rbac_no_permissions(
     )
 
     # Prepare misconfigured machine and upload data to Insights
-    create_insights_recommendation(rhel_insights_vm)
+    create_recommendation(rhel_insights_vm)
 
     # Log in as the user with no insights permissions
     # User is already in their default organization, no need to select
@@ -723,3 +723,54 @@ def test_iop_insights_rbac_no_permissions(
         assert permission == "You do not have access to Advisor"
         permission = session.cloudvulnerability.read_no_authorized_message()
         assert permission == "You do not have access to Vulnerability"
+
+
+@pytest.mark.no_containers
+@pytest.mark.rhel_ver_list([settings.content_host.default_rhel_version])
+def test_re_register_after_enabling_iop(
+    rhel_insights_vm,
+    rhcloud_manifest_org,
+    module_target_sat_insights,
+):
+    """
+    Verify that a remediation job can be run successfully on a host that was originally registered
+    to hosted Insights after enabling IoP on Satellite and re-registering the host to IoP.
+
+    :id: 84fbc3b1-1aaa-4ca2-aa90-c606eb863c61
+
+    :steps:
+        1. Register a host to hosted Insights via Satellite.
+        2. Enable IoP on Satellite.
+        3. Re-run `insights-client --register` on the host.
+        4. Create a recommendation on the host.
+        5. Attempt to run a remediation job for the recommendation.
+
+    :expectedresults:
+        The remediation job runs successfully on the host.
+    """
+    assert rhel_insights_vm.execute('insights-client --test-connection').status == 0
+    module_target_sat_insights.configure_iop()
+    assert rhel_insights_vm.execute('insights-client --register').status == 0
+    create_recommendation(rhel_insights_vm)
+
+    with module_target_sat_insights.ui_session() as session:
+        session.organization.select(org_name=rhcloud_manifest_org.name)
+
+        # Search for the recommendation.
+        result = session.recommendationstab.search(OPENSSH_RECOMMENDATION)
+        assert result[0]['Name'] == OPENSSH_RECOMMENDATION
+
+        # Remediate the Affected System.
+        result = session.recommendationstab.remediate_affected_system(
+            OPENSSH_RECOMMENDATION, rhel_insights_vm.hostname
+        )
+
+        # Verify that the job Succeeded
+        assert result['status']['Succeeded'] != 0
+        assert result['overall_status']['is_success']
+
+        # Verify that the recommendation is not listed anymore.
+        assert (
+            'No recommendations None of your connected systems are affected by enabled recommendations'
+            in session.recommendationstab.search(OPENSSH_RECOMMENDATION)[0]['Name']
+        )

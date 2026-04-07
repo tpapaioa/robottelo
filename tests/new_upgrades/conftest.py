@@ -47,7 +47,6 @@ def pytest_configure(config):
 
 
 def shared_checkout(shared_name, iop=False):
-    Satellite(hostname="blank")._swap_nailgun(settings.UPGRADE.FROM_VERSION)
     workflow = (
         settings.server.deploy_workflows.iop if iop else settings.server.deploy_workflows.product
     )

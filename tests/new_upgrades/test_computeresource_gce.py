@@ -154,6 +154,8 @@ def setup_gce_cr_and_host(
         assert host.ip == google_host.ip
 
         sat_upgrade.ready()
+        target_sat.close()
+
         test_data = Box(
             {
                 'satellite': target_sat,
@@ -170,8 +172,6 @@ def setup_gce_cr_and_host(
                 'provision_host_ip': host.ip,
             }
         )
-        target_sat._swap_nailgun(settings.upgrade.to_version)
-        target_sat._session = None
         yield test_data
 
 

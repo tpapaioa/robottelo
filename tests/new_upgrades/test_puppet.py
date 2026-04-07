@@ -15,7 +15,6 @@
 from box import Box
 import pytest
 
-from robottelo.config import settings
 from robottelo.utils.shared_resource import SharedResource
 
 
@@ -34,11 +33,9 @@ def capsule_puppet_upgrade_setup(capsule_puppet_upgrade_integrated_sat_cap, upgr
             }
         )
         sat_upgrade.ready()
-        satellite._swap_nailgun(settings.upgrade.to_version)
-        satellite._session = None
-
+        satellite.close()
         cap_upgrade.ready()
-        capsule._session = None
+        capsule.close()
         yield test_data
 
 

@@ -72,7 +72,7 @@ def cv_upgrade_setup(content_upgrade_shared_satellite, upgrade_action):
         assert len(cv.read_json()['versions']) == 1
         test_data.cv = cv
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 
@@ -96,6 +96,7 @@ def test_cv_upgrade_scenario(cv_upgrade_setup):
 
     """
     target_sat = cv_upgrade_setup.target_sat
+    target_sat.clean_cached_properties()
     org = target_sat.api.Organization().search(
         query={'search': f'name="{cv_upgrade_setup.org.name}"'}
     )[0]

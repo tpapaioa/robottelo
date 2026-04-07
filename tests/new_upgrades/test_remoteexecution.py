@@ -107,9 +107,9 @@ def remote_execution_external_capsule_setup(
         result = target_sat.api.JobInvocation(id=job['id']).read()
         assert result.succeeded == 1
         sat_upgrade.ready()
+        target_sat.close()
         cap_upgrade.ready()
-        target_sat._session = None
-        capsule._session = None
+        capsule.close()
         yield test_data
 
 
@@ -216,7 +216,6 @@ def remote_execution_satellite_setup(
         assert result.succeeded == 1
         # Save client info to disk for post-upgrade test
         sat_upgrade.ready()
-        target_sat._session = None
         test_data = Box({'rhel_client': rhel_contenthost.hostname, 'target_sat': target_sat})
         yield test_data
 

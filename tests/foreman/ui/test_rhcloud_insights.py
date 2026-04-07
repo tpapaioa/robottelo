@@ -21,17 +21,17 @@ from robottelo.config import settings
 from robottelo.constants import DNF_RECOMMENDATION, OPENSSH_RECOMMENDATION
 
 
-def create_insights_vulnerability(host):
-    """Function to create vulnerabilities that can be remediated."""
+def create_recommendation(host):
+    """Function to create recommendation rule hits that can be remediated."""
 
-    # Add vulnerability for DNF_RECOMMENDATION (RHEL 8+)
+    # Add rule hit for DNF_RECOMMENDATION (RHEL 8+)
     if host.os_version.major > 7:
         host.run('dnf update -y dnf;sed -i -e "/^best/d" /etc/dnf/dnf.conf')
 
-    # Add vulnerability for SSH_RECOMMENDATION
+    # Add rule hit for SSH_RECOMMENDATION
     host.run('chmod 777 /etc/ssh/sshd_config')
 
-    # Upload insights data to Satellite
+    # Upload data
     result = host.run('insights-client')
     assert result.status == 0
 
@@ -69,18 +69,18 @@ def test_rhcloud_insights_e2e(
     :id: d952e83c-3faf-4299-a048-2eb6ccb8c9c2
 
     :steps:
-        1. Prepare misconfigured machine and upload its data to Insights.
-        2. In Satellite UI, go to Insights > Recommendations.
+        1. Prepare misconfigured machine and upload its data to Red Hat Lightspeed.
+        2. In Satellite UI, go to Red Hat Lightspeed > Recommendations.
         3. Run remediation for "OpenSSH config permissions" recommendation against host.
         4. Verify that the remediation job completed successfully.
         5. Re-sync recommendations.
         6. Search for previously remediated issue.
 
     :expectedresults:
-        1. Insights recommendation related to "OpenSSH config permissions" issue is listed
+        1. Recommendation related to "OpenSSH config permissions" issue is listed
             for misconfigured machine.
         2. Remediation job finished successfully.
-        3. Insights recommendation related to "OpenSSH config permissions" issue is not listed.
+        3. Recommendation related to "OpenSSH config permissions" issue is not listed.
 
     :CaseImportance: Critical
 
@@ -102,8 +102,8 @@ def test_rhcloud_insights_e2e(
     # Verify insights-client can update to latest version available from server
     assert rhel_insights_vm.execute('insights-client --version').status == 0
 
-    # Prepare misconfigured machine and upload data to Insights
-    create_insights_vulnerability(rhel_insights_vm)
+    # Prepare misconfigured machine and upload data to Red Hat Lightspeed
+    create_recommendation(rhel_insights_vm)
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
@@ -153,22 +153,22 @@ def test_rhcloud_insights_remediate_multiple_hosts(
     rhcloud_manifest_org,
     module_target_sat_insights,
 ):
-    """Get rule hits data for multiple Hosts from hosted Insights Advisor, verify results are displayed in Satellite, and run remediations for all Hosts simultaneously.
+    """Get rule hits data for multiple Hosts from hosted Red Hat Lightspeed Advisor, verify results are displayed in Satellite, and run remediations for all Hosts simultaneously.
 
     :id: 33463576-ccc0-4200-a5c0-6e7ffc9a03f7
 
     :steps:
-        1. Prepare misconfigured machines and upload data to hosted or local Insights Advisor.
-        2. In Satellite UI, go to Insights > Recommendations.
+        1. Prepare misconfigured machines and upload data to hosted Red Hat Lightspeed Advisor.
+        2. In Satellite UI, go to Red Hat Lightspeed > Recommendations.
         3. Run remediation for "OpenSSH config permissions" recommendation against Hosts.
         4. Verify that the remediation jobs completed successfully.
-        5. Refresh the Insights recommendations.
+        5. Refresh the recommendations from Red Hat Lightspeed.
         6. Search for previously remediated issues.
     :expectedresults:
-        1. Insights recommendations related to "OpenSSH config permissions" issue are listed
+        1. Recommendations related to "OpenSSH config permissions" issue are listed
             for misconfigured machines.
         2. Remediation jobs finished successfully.
-        3. Insights recommendations related to "OpenSSH config permissions" issue are not listed.
+        3. Recommendations related to "OpenSSH config permissions" issue are not listed.
 
     :CaseImportance: Critical
 
@@ -187,9 +187,9 @@ def test_rhcloud_insights_remediate_multiple_hosts(
         f'Remote action: Insights remediations for selected issues on ({"|".join(hostnames)})'
     )
 
-    # Prepare the misconfigured hosts and upload Insights data
+    # Prepare the misconfigured hosts and upload dats
     for vm in rhel_insights_vms:
-        create_insights_vulnerability(vm)
+        create_recommendation(vm)
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
@@ -232,21 +232,21 @@ def test_rhcloud_insights_remediate_multiple_hosts(
 
 @pytest.mark.stubbed
 def test_insights_reporting_status():
-    """Verify that the Insights reporting status functionality works as expected.
+    """Verify that the Red Hat Lightspeed reporting status functionality works as expected.
 
     :id: 75629a08-b585-472b-a295-ce497075e519
 
     :steps:
-        1. Register a satellite content host with insights.
+        1. Register a satellite content host with Red Hat Lightspeed.
         2. Change 48 hours of wait time to 4 minutes in insights_client_report_status.rb file.
             See foreman_rh_cloud PR#596.
-        3. Unregister host from insights.
+        3. Unregister host from Red Hat Lightspeed.
         4. Wait 4 minutes.
         5. Use ForemanTasks.sync_task(InsightsCloud::Async::InsightsClientStatusAging)
             execute task manually.
 
     :expectedresults:
-        1. Insights status for host changed to "Not reporting".
+        1. Status for host changed to "Not reporting".
 
     :CaseImportance: Medium
 
@@ -258,21 +258,21 @@ def test_insights_reporting_status():
 
 @pytest.mark.stubbed
 def test_recommendation_sync_for_satellite():
-    """Verify that Insights recommendations are listed for satellite.
+    """Verify that recommendations are listed for satellite.
 
     :id: ee3feba3-c255-42f1-8293-b04d540dcca5
 
     :steps:
-        1. Register Satellite with insights.(satellite-installer --register-with-insights)
+        1. Register Satellite with Red Hat Lightspeed. (satellite-installer --register-with-insights)
         2. Add RH cloud token in settings.
-        3. Go to Insights > Recommendations > Click on Sync recommendations button.
+        3. Go to Red Hat Lightspped > Recommendations > Click on Sync recommendations button.
         4. Click on notification icon.
         5. Select recommendation and try remediating it.
 
     :expectedresults:
-        1. Notification about insights recommendations for Satellite is shown.
-        2. Insights recommendations are listed for satellite.
-        3. Successfully remediated the insights recommendation for Satellite itself.
+        1. Notification about recommendations for Satellite is shown.
+        2. Recommendations are listed for satellite.
+        3. Successfully remediated the recommendation for Satellite itself.
 
     :CaseImportance: High
 
@@ -284,14 +284,13 @@ def test_recommendation_sync_for_satellite():
 
 @pytest.mark.stubbed
 def test_host_sorting_based_on_recommendation_count():
-    """Verify that hosts can be sorted and filtered based on insights
-        recommendation count.
+    """Verify that hosts can be sorted and filtered based on recommendation count.
 
     :id: b1725ec1-60db-422e-809d-f81d99ae156e
 
     :steps:
-        1. Register few satellite content host with insights.
-        2. Sync Insights recommendations.
+        1. Register a few Satellite content host with Red Hat Lightspeed.
+        2. Sync recommendations.
         3. Go to Hosts > All Hosts.
         4. Click on "Recommendations" column.
         5. Use insights_recommendations_count keyword to filter hosts.
@@ -315,33 +314,33 @@ def test_host_details_page(
     rhcloud_manifest_org,
     module_target_sat_insights,
 ):
-    """Test host details page for host having insights recommendations.
+    """Test host details page for host with recommendations.
 
     :id: e079ed10-c9f5-4331-9cb3-70b224b1a584
 
     :customerscenario: true
 
     :steps:
-        1. Prepare misconfigured machine and upload its data to Insights.
-        2. Sync Insights recommendations.
-        3. Sync Insights inventory status.
+        1. Prepare misconfigured machine and upload its data to Red Hat Lightspeed.
+        2. Sync recommendations.
+        3. Sync inventory status.
         4. Go to Hosts -> All Hosts
-        5. Verify there is a "Recommendations" column containing Insights recommendation count.
+        5. Verify there is a "Recommendations" column containing recommendation count.
         6. Check popover status of host.
         7. Verify that host properties shows "reporting" inventory upload status.
-        8. Read the recommendations listed in Insights tab present on host details page.
+        8. Read the recommendations listed in the Recommendations tab present on the host details page.
         9. Click on "Recommendations" tab.
         10. Try to delete host.
 
     :expectedresults:
-        1. There's Insights column with number of recommendations.
+        1. There's a Recommendations column with the correct number of recommendations.
         2. Inventory upload status is displayed in popover status of host.
-        3. Insights registration status is displayed in popover status of host.
+        3. Red Hat Lightspeed registration status is displayed in popover status of host.
         4. Inventory upload status is present in host properties table.
-        5. Verify the contents of Insights tab.
-        6. Clicking on "Recommendations" tab takes user to Insights page with
+        5. Verify the contents of the Recommendations tab.
+        6. Clicking on the "Recommendations" tab takes the user to the Recommendations page with the
             recommendations selected for that host.
-        7. Host having Insights recommendations is deleted from Satellite.
+        7. Host with recommendations is deleted from Satellite.
 
     :BZ: 1974578, 1860422, 1928652, 1865876, 1879448
 
@@ -351,8 +350,8 @@ def test_host_details_page(
     """
     org_name = rhcloud_manifest_org.name
 
-    # Prepare misconfigured machine and upload data to Insights.
-    create_insights_vulnerability(rhel_insights_vm)
+    # Prepare misconfigured machine and upload data to Red Hat Lightspeed.
+    create_recommendation(rhel_insights_vm)
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
@@ -364,10 +363,10 @@ def test_host_details_page(
             }
         )
 
-        # Sync insights recommendations.
+        # Sync recommendations from Red Hat Lightspeed.
         sync_recommendations(session, module_target_sat_insights)
 
-        # Verify Insights status of host.
+        # Verify status of host.
         result = session.host_new.get_host_statuses(rhel_insights_vm.hostname)
         assert result['Red Hat Lightspeed']['Status'] == 'Reporting'
         assert (
@@ -380,23 +379,16 @@ def test_host_details_page(
         assert result['Name'] == rhel_insights_vm.hostname
         assert int(result['Recommendations']) > 0
 
-        # Read the recommendations in Insights tab on host details page.
-        insights_recommendations = session.host_new.get_insights(rhel_insights_vm.hostname)[
-            'recommendations_table'
-        ]
+        # Read the recommendations on the host details page's Recommendation tab.
+        recommendations = session.host_new.get_recommendations(rhel_insights_vm.hostname)
+        assert len(recommendations), 'No recommendations were found'
+        assert int(result['Recommendations']) == len(recommendations)
+
         # Verify
-        for recommendation in insights_recommendations:
+        for recommendation in recommendations:
             if recommendation['Recommendation'] == DNF_RECOMMENDATION:
                 assert recommendation['Total risk'] == 'Moderate'
                 assert DNF_RECOMMENDATION in recommendation['Recommendation']
-                assert len(insights_recommendations) == int(result['Recommendations'])
-
-        # Test Recommendation button present on host details page
-        recommendations = session.host_new.get_insights(rhel_insights_vm.hostname)[
-            'recommendations_table'
-        ]
-        assert len(recommendations), 'No recommendations were found'
-        assert int(result['Recommendations']) == len(recommendations)
 
     # Delete host
     rhel_insights_vm.nailgun_host.delete()
@@ -416,8 +408,8 @@ def test_insights_registration_with_capsule(
     rhel_contenthost,
     default_os,
 ):
-    """Registering host with insights having traffic going through
-        external capsule and also test rh_cloud_insights:clean_statuses rake command.
+    """Registering host with Red Hat Lightspeed through external capsule,
+    and also test rh_cloud_insights:clean_statuses rake command.
 
     :id: 9db1d307-664c-4d4a-89de-da986224f071
 
@@ -426,18 +418,18 @@ def test_insights_registration_with_capsule(
     :steps:
         1. Integrate a capsule with satellite.
         2. Open the global registration form and select the same capsule.
-        3. Override Insights and Rex parameters.
+        3. Override Red Hat Lightspeed and Rex parameters.
         4. Check host is registered successfully with selected capsule.
         5. Test insights client connection & reporting status.
         6. Verify Remote Execution is functional by running a job on the host.
         7. Run rh_cloud_insights:clean_statuses rake command
-        8. Verify that host properties doesn't contain insights status.
+        8. Verify that host properties doesn't contain Red Hat Lightspeed status.
 
     :expectedresults:
         1. Host is successfully registered with capsule host,
-            having remote execution and insights.
+            having remote execution and Red Hat Lightspeed enabled.
         2. Remote Execution job runs successfully on the host.
-        3. rake command deletes insights reporting status of host.
+        3. rake command deletes Red Hat Lightspeed reporting status of host.
 
     :BZ: 2110222, 2112386, 1962930
 
@@ -468,7 +460,7 @@ def test_insights_registration_with_capsule(
                 'advanced.setup_rex': 'Yes (override)',
             }
         )
-        # Register host with Satellite and Insights.
+        # Register host with Satellite and Red Hat Lightspeed.
         rhel_contenthost.execute(cmd)
         assert rhel_contenthost.subscribed
         assert rhel_contenthost.execute('insights-client --test-connection').status == 0
@@ -497,7 +489,7 @@ def test_insights_registration_with_capsule(
         job_result = module_target_sat_insights.api.JobInvocation(id=job['id']).read()
         assert job_result.succeeded == 1, 'Remote Execution job failed on the host'
 
-        # Clean insights status
+        # Clean Red Hat Lightspeed status.
         result = module_target_sat_insights.run(
             f'foreman-rake rh_cloud_insights:clean_statuses SEARCH="{rhel_contenthost.hostname}"'
         )
@@ -505,14 +497,14 @@ def test_insights_registration_with_capsule(
         assert result.status == 0
         # Workaround for not reading old data.
         session.browser.refresh()
-        # Verify that Insights status is cleared.
+        # Verify that status is cleared.
         values = session.host_new.get_host_statuses(rhel_contenthost.hostname)
         assert values['Red Hat Lightspeed']['Status'] == 'N/A'
         result = rhel_contenthost.run('insights-client')
         assert result.status == 0
         # Workaround for not reading old data.
         session.browser.refresh()
-        # Verify that Insights status again.
+        # Verify status again.
         values = session.host_new.get_host_statuses(rhel_contenthost.hostname)
         assert values['Red Hat Lightspeed']['Status'] == 'Reporting'
 
@@ -530,15 +522,15 @@ def test_host_breadcrumb_switcher_updates_insights_tabs(
     :id: e9f3fde8-c56b-42de-921f-576c83efcec7
 
     :steps:
-        1. Prepare one host with vulnerabilities (host1) and one without (host2).
-        2. Upload insights data and sync recommendations.
-        3. Navigate to host1's details page and verify Insights tab shows recommendations.
+        1. Prepare one host with recommendations (host1) and one without (host2).
+        2. Upload data and sync recommendations.
+        3. Navigate to host1's details page and verify Recommendations tab shows recommendations.
         4. Use breadcrumb switcher to switch to host2 (without full page navigation).
         5. Verify that Recommendations tab updates to show no recommendations for host2.
         6. Switch back to host1 and verify recommendations are displayed again.
 
     :expectedresults:
-        1. Host1 displays recommendations in the Insights tab.
+        1. Host1 displays recommendations in the Recommendations tab.
         2. After switching to host2 via breadcrumb, tab shows no recommendations.
         3. After switching back to host1 via breadcrumb, recommendations are displayed again.
         4. The tab content properly updates with each breadcrumb switch without requiring page reload.
@@ -549,28 +541,24 @@ def test_host_breadcrumb_switcher_updates_insights_tabs(
     """
     org_name = rhcloud_manifest_org.name
 
-    # Ensure we have at least 2 hosts
-    assert len(rhel_insights_vms) >= 2, "Test requires at least 2 hosts"
-    host1, host2 = rhel_insights_vms[0], rhel_insights_vms[1]
+    host1, host2 = rhel_insights_vms
 
-    # Only create vulnerabilities on host1 so that host1 and host2 have different data
+    # Only create recommendations on host1, so that host1 and host2 have different data
     # This allows us to verify that the tab actually updates when switching hosts
-    create_insights_vulnerability(host1)
+    create_recommendation(host1)
 
     with module_target_sat_insights.ui_session() as session:
         session.organization.select(org_name=org_name)
 
-        # Sync insights recommendations
+        # Sync recommendations
         sync_recommendations(session, module_target_sat_insights)
 
         # Get baseline recommendations for host1
-        insights_host1 = session.host_new.get_insights(host1.hostname)
-        recommendations_host1 = insights_host1.get('recommendations_table', [])
+        recommendations_host1 = session.host_new.get_recommendations(host1.hostname)
         assert len(recommendations_host1) > 0, f"No recommendations found for {host1.hostname}"
 
         # Get baseline recommendations for host2
-        insights_host2 = session.host_new.get_insights(host2.hostname)
-        recommendations_host2 = insights_host2.get('recommendations_table', [])
+        recommendations_host2 = session.host_new.get_recommendations(host2.hostname)
 
         # Store recommendation counts and titles for comparison
         host1_titles = {rec['Recommendation'] for rec in recommendations_host1}
@@ -582,14 +570,13 @@ def test_host_breadcrumb_switcher_updates_insights_tabs(
         )
 
         # Navigate back to host1's details page
-        session.host_new.get_insights(host1.hostname)
+        session.host_new.get_recommendations(host1.hostname)
 
         # Use breadcrumb switcher to switch to host2
         session.host_new.select_host_from_breadcrumb(host2.hostname)
 
-        # Read the Insights tab content after breadcrumb switch
-        insights_after_switch = session.host_new.read_current_insights_tab()
-        recommendations_after_switch = insights_after_switch.get('recommendations_table', [])
+        # Read the Recommendations tab content after breadcrumb switch
+        recommendations_after_switch = session.host_new.read_current_recommendations_tab()
 
         titles_after_switch = {rec['Recommendation'] for rec in recommendations_after_switch}
 
@@ -609,8 +596,7 @@ def test_host_breadcrumb_switcher_updates_insights_tabs(
         session.host_new.select_host_from_breadcrumb(host1.hostname)
 
         # Verify the tab updates to show host1's recommendations again (not empty)
-        insights_back_to_host1 = session.host_new.read_current_insights_tab()
-        recommendations_back = insights_back_to_host1.get('recommendations_table', [])
+        recommendations_back = session.host_new.read_current_recommendations_tab()
 
         # Verify we see host1's recommendations again
         assert len(recommendations_back) > 0, (

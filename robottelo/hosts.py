@@ -10,8 +10,6 @@ import json
 from pathlib import Path, PurePath
 import random
 import re
-import subprocess
-import sys
 from tempfile import NamedTemporaryFile
 import time
 from urllib.parse import urljoin, urlparse, urlunsplit
@@ -19,11 +17,12 @@ from urllib.parse import urljoin, urlparse, urlunsplit
 import apypie
 from box import Box
 from broker import Broker
-from broker.helpers import FileLock
 from broker.hosts import Host
 from dynaconf.vendor.box.exceptions import BoxKeyError
 from fauxfactory import gen_alpha, gen_string
 from nailgun import entities
+from nailgun.config import ServerConfig
+from nailgun.entity_mixins import Entity
 from packaging.version import Version
 import pytest
 import requests
@@ -1740,7 +1739,6 @@ class Capsule(ContentHost, CapsuleMixins):
         """
         return self.execute(f'rpm -q {self.product_rpm_name}').status != 0
 
-    @cached_property
     def is_stream(self):
         """Check if the Capsule is a stream release or not
 
@@ -1753,10 +1751,12 @@ class Capsule(ContentHost, CapsuleMixins):
             'stream' in self.execute(f'rpm -q --qf "%{{RELEASE}}" {self.product_rpm_name}').stdout
         )
 
-    @cached_property
     def version(self):
         rpm_name = self.upstream_rpm_name if self.is_upstream else self.product_rpm_name
         return self.execute(f'rpm -q --qf "%{{VERSION}}" {rpm_name}').stdout
+
+    def upstream_version(self):
+        return self.execute(f'rpm -q --qf "%{{VERSION}}" {self.upstream_rpm_name}').stdout
 
     @cached_property
     def url(self):
@@ -2369,54 +2369,6 @@ class Satellite(Capsule, SatelliteMixins):
         self._apidoc = None
         self.record_property = None
 
-    def _swap_nailgun(self, new_version):
-        """Install a different version of nailgun from GitHub and invalidate the module cache."""
-
-        logger.debug(f'Installing nailgun for new_version: {new_version}')
-        nailgun_ref = 'master' if new_version == 'stream' else f'{new_version}.z'
-
-        # Use file locking to prevent race conditions when multiple xdist workers
-        # try to install/uninstall nailgun simultaneously
-        lock_file = Path('/tmp/nailgun-install')
-        with FileLock(lock_file, timeout=120):
-            logger.debug('Acquired nailgun install lock, running pip commands')
-
-            expected_url = f'https://github.com/SatelliteQE/nailgun/archive/{nailgun_ref}.zip'
-            # Check if correct version already installed
-            result = subprocess.run(
-                [sys.executable, '-m', 'pip', 'freeze'], capture_output=True, text=True, check=True
-            )
-            is_installed = any(
-                line.startswith('nailgun') and expected_url in line
-                for line in result.stdout.split('\n')
-            )
-            if is_installed:
-                logger.debug(f'Nailgun {new_version} already installed, skipping pip install')
-            else:
-                logger.debug(f'Nailgun {new_version} not already installed, running pip install')
-                subprocess.run(
-                    [sys.executable, '-m', 'pip', 'uninstall', '-y', 'nailgun'], check=True
-                )
-                subprocess.run(
-                    [
-                        sys.executable,
-                        '-m',
-                        'pip',
-                        'install',
-                        expected_url,
-                    ],
-                    check=True,
-                )
-            logger.debug('Nailgun pip commands complete, releasing lock')
-
-        # Clear module cache after lock is released (each worker clears its own cache).
-        # Run this even if the worker didn't need to reinstall nailgun,
-        # to make sure it has the correct api.
-        self._api = type('api', (), {'_configured': False})
-        to_clear = [k for k in sys.modules if 'nailgun' in k]
-        for k in to_clear:
-            sys.modules.pop(k)
-
     @property
     def api(self):
         """Import all nailgun entities and wrap them under self.api"""
@@ -2424,37 +2376,51 @@ class Satellite(Capsule, SatelliteMixins):
             self._api = type('api', (), {'_configured': False})
         if self._api._configured:
             return self._api
-        from nailgun import entities as _entities  # use a private import
-        from nailgun.config import ServerConfig
-        from nailgun.entity_mixins import Entity
 
         def inject_config(cls, server_config):
-            """inject a nailgun server config into the init of nailgun entity classes"""
+            """Inject server_config into nailgun entity class."""
             import functools
 
-            class DecClass(cls):
+            class ConfiguredEntity(cls):
+                """Wrapper that injects server_config into entity initialization."""
+
                 __init__ = functools.partialmethod(cls.__init__, server_config=server_config)
 
-            return DecClass
+            return ConfiguredEntity
 
-        # set the server configuration to point to this satellite
+        # Create server configuration for this satellite
         self.nailgun_cfg = ServerConfig(
             auth=(settings.server.admin_username, settings.server.admin_password),
             url=f'{self.url}',
             verify=settings.server.verify_ca,
         )
-        # add each nailgun entity to self.api, injecting our server config
-        for name, obj in _entities.__dict__.items():
+
+        self.nailgun_cfg.version = Version(self.version)
+
+        # Inject server config into each nailgun entity class
+        for name, obj in entities.__dict__.items():
             try:
                 if Entity in obj.mro():
-                    #  create a copy of the class and inject our server config into the __init__
-                    new_cls = type(name, (obj,), {})
-                    setattr(self._api, name, inject_config(new_cls, self.nailgun_cfg))
+                    setattr(self._api, name, inject_config(obj, self.nailgun_cfg))
             except AttributeError:
-                # not everything has an mro method, we don't care about them
+                # Not everything has an mro method, skip those
                 pass
         self._api._configured = True
         return self._api
+
+    def reset_api(self):
+        """Reset the API configuration to pick up version changes after upgrade.
+
+        This method should be called after upgrading the Satellite to ensure
+        nailgun entities use the correct version for API calls.
+
+        Usage:
+            satellite.upgrade()
+            satellite.reset_api()  # Re-initialize with new version
+        """
+        self._api = type('api', (), {'_configured': False})
+        # Force re-initialization on next access
+        # The api property will detect _configured=False and re-run setup with new version
 
     @property
     def apidoc(self):
@@ -2545,6 +2511,7 @@ class Satellite(Capsule, SatelliteMixins):
                 url=url,
                 hostname=self.hostname,
                 login=login,
+                satellite=self,
             ) as ui_session:
                 yield ui_session
         finally:

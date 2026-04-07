@@ -42,7 +42,7 @@ def default_role_permission_setup(search_upgrade_shared_satellite, upgrade_actio
             }
         )
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 
@@ -68,7 +68,6 @@ def default_role_permission_with_filter_setup(search_upgrade_shared_satellite, u
         assert domain_filter.id in [filt.id for filt in default_role.read().filters]
         test_data = Box({'satellite': target_sat})
         sat_upgrade.ready()
-        target_sat._session = None
         yield test_data
 
 

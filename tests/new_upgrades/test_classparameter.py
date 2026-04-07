@@ -104,7 +104,7 @@ def puppet_class_parameter_data_and_type_setup(
         test_data.puppet_class = puppet_class.name
         test_data.count = request.param
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

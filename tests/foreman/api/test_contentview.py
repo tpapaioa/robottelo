@@ -357,6 +357,7 @@ class TestContentView:
         assert response['results'][0]['label'] == label
 
 
+@pytest.mark.requires_feature(feature_name='contentview.rolling')
 class TestRollingContentView:
     """Testing for rolling content views."""
 

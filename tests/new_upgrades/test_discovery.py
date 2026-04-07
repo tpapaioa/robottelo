@@ -46,7 +46,7 @@ def fdi_upgrade_setup(fdi_upgrade_shared_satellite, upgrade_action):
             }
         )
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

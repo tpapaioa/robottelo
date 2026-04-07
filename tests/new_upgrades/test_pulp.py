@@ -38,7 +38,7 @@ def pulp_upgrade_setup(pulp_upgrade_shared_satellite, upgrade_action, pulp_upgra
             target_sat, pulp_upgrade_manifest, test_name='pulp_href_prn_migration'
         )
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

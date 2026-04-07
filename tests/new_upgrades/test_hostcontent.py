@@ -78,6 +78,7 @@ def db_seed_host_mismatch_setup(
         assert rhel_contenthost.nailgun_host.location.id == location.id
 
         sat_upgrade.ready()
+        target_sat.close()
         test_data = Box(
             {
                 'client_name': rhel_contenthost.hostname,
@@ -86,7 +87,6 @@ def db_seed_host_mismatch_setup(
                 'target_sat': target_sat,
             }
         )
-        target_sat._session = None
         yield test_data
 
 

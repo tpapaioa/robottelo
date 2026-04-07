@@ -18,6 +18,8 @@ from pathlib import Path
 from box import Box
 import pytest
 
+pytestmark = [pytest.mark.requires_feature(feature_name='iop.advisor')]
+
 
 @pytest.mark.no_containers
 @pytest.mark.rhel_ver_list(r'^[\d]+$')

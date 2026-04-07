@@ -101,7 +101,7 @@ def create_virt_who_configuration_setup(
         test_data.vhd = vhd.read()
         assert test_data.vhd.status == 'ok'
         sat_upgrade.ready()
-        target_sat._session = None
+        target_sat.close()
         yield test_data
 
 

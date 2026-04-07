@@ -42,6 +42,8 @@ IOP_SERVICES = [
     'iop-service-vuln-taskomatic',
 ]
 
+pytestmark = [pytest.mark.requires_feature(feature_name='iop.advisor')]
+
 
 @pytest.mark.no_containers
 @pytest.mark.rhel_ver_match('N-0')

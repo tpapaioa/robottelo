@@ -93,11 +93,11 @@ def capsule_sync_setup(capsule_upgrade_integrated_sat_cap, upgrade_action):
             }
         )
         sat_upgrade.ready()
-        target_sat._swap_nailgun(settings.upgrade.to_version)
-        target_sat._session = None
+        target_sat.close()
 
         cap_upgrade.ready()
-        capsule._session = None
+        capsule.close()
+
         yield test_data
 
 
