@@ -358,9 +358,7 @@ def test_positive_add_host(session, module_target_sat):
     host = module_target_sat.api.Host(
         organization=org,
         location=loc,
-        content_facet_attributes={
-            'content_view_environment_ids': [module_target_sat.api_factory.get_cvenv_id(cv, lce)],
-        },
+        content_facet_attributes={'content_view_id': cv.id, 'lifecycle_environment_id': lce.id},
     ).create()
     with session:
         session.organization.select(org_name=org.name)
@@ -667,9 +665,8 @@ def test_negative_hosts_limit(module_target_sat, module_org_with_parameter, smar
                 organization=module_org_with_parameter,
                 location=smart_proxy_location,
                 content_facet_attributes={
-                    'content_view_environment_ids': [
-                        module_target_sat.api_factory.get_cvenv_id(cv, lce)
-                    ],
+                    'content_view_id': cv.id,
+                    'lifecycle_environment_id': lce.id,
                 },
             ).create()
         )

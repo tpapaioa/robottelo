@@ -89,8 +89,11 @@ def rhcloud_manifest_org(module_target_sat_insights, module_sca_manifest):
 def rhcloud_activation_key(module_target_sat_insights, rhcloud_manifest_org):
     """A module-level fixture to create an Activation key in rhcloud_manifest_org"""
     return module_target_sat_insights.api.ActivationKey(
-        **_activation_key_content_payload(module_target_sat_insights, rhcloud_manifest_org),
+        content_view=rhcloud_manifest_org.default_content_view,
         organization=rhcloud_manifest_org,
+        environment=module_target_sat_insights.api.LifecycleEnvironment(
+            id=rhcloud_manifest_org.library.id
+        ),
         service_level='Self-Support',
         purpose_usage='test-usage',
         purpose_role='test-role',
@@ -101,8 +104,11 @@ def rhcloud_activation_key(module_target_sat_insights, rhcloud_manifest_org):
 def activation_key_with_els_manifest_org(module_target_sat_insights, module_els_manifest_org):
     """A module-level fixture to create an Activation key in module_els_manifest_org"""
     return module_target_sat_insights.api.ActivationKey(
-        **_activation_key_content_payload(module_target_sat_insights, module_els_manifest_org),
+        content_view=module_els_manifest_org.default_content_view,
         organization=module_els_manifest_org,
+        environment=module_target_sat_insights.api.LifecycleEnvironment(
+            id=module_els_manifest_org.library.id
+        ),
     ).create()
 
 

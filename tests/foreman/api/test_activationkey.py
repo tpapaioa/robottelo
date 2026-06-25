@@ -427,9 +427,8 @@ def test_positive_fetch_product_content(
     cvv = cv.version[0]
     cvv.promote(data={'environment_ids': module_lce.id})
 
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(cv, module_lce)
     ak = module_target_sat.api.ActivationKey(
-        content_view_environment_ids=[cvenv_id], organization=module_org.id
+        content_view=cv.id, organization=module_org.id, environment=module_lce.id
     ).create()
     ak_content = ak.product_content()['results']
     assert {custom_repo.product.id, rh_repo.product.id} == {
@@ -485,13 +484,11 @@ def test_positive_search_by_environment(target_sat):
     cv.version[0].promote(data={'environment_ids': lce_dev.id})
     cv.version[0].promote(data={'environment_ids': lce_qa.id})
 
-    cvenv_dev_id = target_sat.api_factory.get_cvenv_id(cv, lce_dev)
-    cvenv_qa_id = target_sat.api_factory.get_cvenv_id(cv, lce_qa)
     ak_dev = target_sat.api.ActivationKey(
-        organization=org, content_view_environment_ids=[cvenv_dev_id]
+        organization=org, environment=lce_dev, content_view=cv
     ).create()
     ak_qa = target_sat.api.ActivationKey(
-        organization=org, content_view_environment_ids=[cvenv_qa_id]
+        organization=org, environment=lce_qa, content_view=cv
     ).create()
 
     for lce, expected_ak in [(lce_dev, ak_dev), (lce_qa, ak_qa)]:

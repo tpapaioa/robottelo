@@ -889,12 +889,10 @@ def test_negative_remove_parameter_non_admin_user(
         default_organization=module_org,
         default_location=smart_proxy_location,
     ).create()
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(
-        module_org.default_content_view, module_org.library
-    )
     host = module_target_sat.api.Host(
         content_facet_attributes={
-            'content_view_environment_ids': [cvenv_id],
+            'content_view_id': module_org.default_content_view.id,
+            'lifecycle_environment_id': module_org.library.id,
         },
         location=smart_proxy_location,
         organization=module_org,
@@ -1954,9 +1952,6 @@ def test_positive_set_multi_line_and_with_spaces_parameter_value(
         'password-auth\r\n'
         'account     include                  password-auth'
     )
-    cvenv_id = session_puppet_enabled_sat.api_factory.get_cvenv_id(
-        module_puppet_published_cv, module_puppet_lce_library
-    )
     host = session_puppet_enabled_sat.api.Host(
         organization=host_template.organization,
         architecture=host_template.architecture,
@@ -1968,7 +1963,8 @@ def test_positive_set_multi_line_and_with_spaces_parameter_value(
         ptable=host_template.ptable,
         root_pass=host_template.root_pass,
         content_facet_attributes={
-            'content_view_environment_ids': [cvenv_id],
+            'content_view_id': module_puppet_published_cv.id,
+            'lifecycle_environment_id': module_puppet_lce_library.id,
         },
     ).create()
     with session_puppet_enabled_sat.ui_session() as session:
@@ -2098,13 +2094,13 @@ def test_all_hosts_bulk_cve_reassign(
     module_cv = target_sat.api.ContentView(id=module_cv.id).read()
     module_cv = cv_publish_promote(target_sat, module_org, module_cv, module_lce)['content-view']
     module_cv = cv_publish_promote(target_sat, module_org, module_cv, lce2)['content-view']
-    cvenv_id = target_sat.api_factory.get_cvenv_id(module_cv, module_lce)
     for _ in range(3):
         target_sat.api.Host(
             organization=module_org,
             location=module_location,
             content_facet_attributes={
-                'content_view_environment_ids': [cvenv_id],
+                'content_view_id': module_cv.id,
+                'lifecycle_environment_id': module_lce.id,
             },
         ).create()
     with target_sat.ui_session() as session:
@@ -2229,9 +2225,8 @@ def change_content_source_prep(
     content_view.publish()
     content_view.read().version[0].promote(data={'environment_ids': lce.id})
 
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(content_view, lce)
     ak = module_target_sat.api.ActivationKey(
-        content_view_environment_ids=[cvenv_id], organization=org.id
+        content_view=content_view, organization=org.id, environment=lce.id
     ).create()
 
     # Edit capsule's taxonomies
@@ -2408,10 +2403,10 @@ def test_manage_content_source_with_multi_cv(
     cv_version2.promote(data={'environment_ids': lce2.id})
 
     # Step 3 & 4: Create activation key and register host
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(module_cv, module_org.library)
     ak = module_target_sat.api.ActivationKey(
         organization=module_org.id,
-        content_view_environment_ids=[cvenv_id],
+        content_view=module_cv.id,
+        environment=module_org.library.id,
     ).create()
     result = rhel_contenthost.register(module_org, None, ak.name, module_target_sat)
     assert result.status == 0, f'Failed to register host: {result.stderr}'
@@ -3002,11 +2997,11 @@ def test_positive_manage_repository_sets(
     cv_version.promote(data={'environment_ids': module_lce.id})
 
     # Update activation key
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(content_view, module_lce)
     module_ak = module_target_sat.api.ActivationKey(
         id=module_ak.id,
         organization=module_sca_manifest_org,
-        content_view_environment_ids=[cvenv_id],
+        content_view=content_view,
+        environment=module_lce,
     ).update()
 
     # Register hosts and collect repo names
@@ -4068,9 +4063,9 @@ def test_positive_all_hosts_manage_system_purpose(
     content_view = content_view.read()
     cvv = content_view.version[0].read()
     cvv.promote(data={'environment_ids': module_lce.id})
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(content_view, module_lce)
     ak = module_target_sat.api.ActivationKey(
-        content_view_environment_ids=[cvenv_id],
+        content_view=content_view,
+        environment=module_lce,
         organization=module_sca_manifest_org,
     ).create()
 
@@ -4317,10 +4312,10 @@ def test_assign_multi_cv_from_host_page(
 
     :verifies: SAT-25846
     """
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(module_cv_repo, module_org.library)
     ak = module_target_sat.api.ActivationKey(
         organization=module_org.id,
-        content_view_environment_ids=[cvenv_id],
+        content_view=module_cv_repo.id,
+        environment=module_org.library.id,
     ).create()
     result = rhel_contenthost.register(module_org, None, ak.name, module_target_sat)
     assert result.status == 0
@@ -4366,10 +4361,10 @@ def test_assign_different_cv_from_same_env(
     :verifies: SAT-25846
     """
     # Create activation key and register host
-    cvenv_id = module_target_sat.api_factory.get_cvenv_id(module_cv_repo, module_org.library)
     ak = module_target_sat.api.ActivationKey(
         organization=module_org.id,
-        content_view_environment_ids=[cvenv_id],
+        content_view=module_cv_repo.id,
+        environment=module_org.library.id,
     ).create()
     result = rhel_contenthost.register(module_org, None, ak.name, module_target_sat)
     assert result.status == 0

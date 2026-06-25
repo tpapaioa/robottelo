@@ -1162,9 +1162,8 @@ class TestEndToEnd:
 
         # step 2.12: Create a new activation key
         activation_key_name = gen_string('alpha')
-        cvenv_id = target_sat.api_factory.get_cvenv_id(content_view, le1)
         activation_key = target_sat.api.ActivationKey(
-            name=activation_key_name, content_view_environment_ids=[cvenv_id], organization=org
+            name=activation_key_name, environment=le1, organization=org, content_view=content_view
         ).create()
 
         # step 2.13: Enable product content
@@ -1179,9 +1178,8 @@ class TestEndToEnd:
         # content view and last lifecycle where it exists
         content_host = target_sat.api.Host(
             content_facet_attributes={
-                'content_view_environment_ids': [
-                    target_sat.api_factory.get_cvenv_id(content_view, le1)
-                ],
+                'content_view_id': content_view.id,
+                'lifecycle_environment_id': le1.id,
             },
             organization=org,
         ).create()

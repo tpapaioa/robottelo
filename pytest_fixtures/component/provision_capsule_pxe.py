@@ -127,10 +127,9 @@ def capsule_provisioning_hostgroup(
         architecture=default_architecture,
         domain=capsule_provisioning_sat.domain,
         content_source=capsule.id,
-        content_view_environment_id=capsule_provisioning_sat.sat.api_factory.get_cvenv_id(
-            capsule_provisioning_rhel_content.cv, module_lce_library
-        ),
+        content_view=capsule_provisioning_rhel_content.cv,
         kickstart_repository=capsule_provisioning_rhel_content.ksrepo,
+        lifecycle_environment=module_lce_library,
         root_pass=settings.provisioning.host_root_password,
         operatingsystem=capsule_provisioning_rhel_content.os,
         ptable=default_partitiontable,
@@ -258,10 +257,10 @@ def capsule_provisioning_rhel_content(
     content_view = sat.api.ContentView(
         organization=module_sca_manifest_org, name=content_view.name
     ).search()[0]
-    cvenv_id = sat.api_factory.get_cvenv_id(content_view, module_lce_library)
     ak = sat.api.ActivationKey(
         organization=module_sca_manifest_org,
-        content_view_environment_ids=[cvenv_id],
+        content_view=content_view,
+        environment=module_lce_library,
     ).create()
 
     # Ensure client repo is enabled in the activation key
